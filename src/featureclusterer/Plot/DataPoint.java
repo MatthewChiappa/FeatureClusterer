@@ -4,6 +4,9 @@ import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 import java.util.Arrays;
 import java.util.HashMap;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.correlation.Covariance;
 
 public class DataPoint {
 
@@ -123,6 +126,29 @@ public class DataPoint {
             dist += pow(points2[i] - points1[i], 2);
         }
         return sqrt(dist);
+    }
+    
+    // Mahalanobis distance formula from point to point
+    public double mDistTo(DataPoint point2) {
+        double[] center = points;
+        double[] newPt = point2.getPoints();
+        
+        RealMatrix ptMean = new Array2DRowRealMatrix(center);
+        RealMatrix ptNew = new Array2DRowRealMatrix(newPt);
+        
+        Covariance mean = new Covariance(ptMean);
+        Covariance newP = new Covariance(ptNew);
+        RealMatrix covMat = newP.getCovarianceMatrix().subtract(mean.getCovarianceMatrix());
+
+        RealMatrix orig  = ptNew.subtract(ptMean);
+        double sum = 0;
+        for (int x = 0; x < orig.getColumn(0).length; x++){
+            sum += pow(orig.getColumn(0)[x], 2);
+        }
+
+        double distSquared = covMat.getEntry(0, 0) * sum;
+
+        return Math.sqrt(distSquared);
     }
 
     // print method for debugging and printing to file

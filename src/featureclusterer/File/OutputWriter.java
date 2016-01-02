@@ -34,7 +34,7 @@ public class OutputWriter {
 
         for (Cluster clust : clusters) {
             printHeader(fw, count);
-
+            
             for (DataPoint pt : clust.getData()) {
                 fw.append(pt.printPoint());
                 if (addClusts) {
@@ -76,22 +76,29 @@ public class OutputWriter {
 
         // if the algorithm is fuzzy, print the membership functions
         if (fuzzy) {
-            fw.append(",,Memberships\n");
+            fw.append(",Memberships");
 
+            for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length; i++) {
+                fw.append(",");
+            }
+        }
+        
+        fw.append(",Distances\n");
+        
+        for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length - 1; i++) {
+            fw.append(",");
+        }
+        
+        if (fuzzy) {
             for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length + 1; i++) {
                 fw.append(",");
             }
-            fw.append(",,");
             for (int i = 0; i < clusters.size(); i++) {
                 fw.append("Cluster " + (i + 1) + ",");
             }
+            fw.append(',');
         }
-        fw.append(",Distances\n");
-
-        for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length + 1; i++) {
-            fw.append(",");
-        }
-        fw.append(",");
+        
         for (int i = 0; i < clusters.size(); i++) {
             fw.append("Cluster " + (i + 1) + ",");
         }

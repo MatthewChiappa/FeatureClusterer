@@ -6,17 +6,21 @@
 package featureclusterer.GUI;
 
 import featureclusterer.Algorithms.Algorithm;
-import featureclusterer.Algorithms.AlgorithmChooser;
 import featureclusterer.Algorithms.BIRCH.BirchExec;
 import featureclusterer.Algorithms.BIRCH.DistThreshChoose;
+import featureclusterer.Algorithms.FCM.FCMChoose;
+import featureclusterer.Algorithms.FCM.FCMExec;
+import featureclusterer.Algorithms.GK.GustafsonKessel;
 import featureclusterer.FeatureSelection.Distances;
 import featureclusterer.FeatureSelection.Dropper;
 import featureclusterer.FeatureSelection.Memberships;
 import featureclusterer.File.InputReader;
 import featureclusterer.File.OutputWriter;
 import featureclusterer.File.OutputWriter2;
+import featureclusterer.File.OutputWriter3;
 import featureclusterer.Plot.Cluster;
 import featureclusterer.Plot.DataPoint;
+import featureclusterer.Validity.ValidityMaster;
 import java.awt.Desktop;
 import java.awt.FileDialog;
 import java.io.File;
@@ -30,6 +34,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import matlabcontrol.MatlabConnectionException;
+import matlabcontrol.MatlabInvocationException;
 
 /**
  *
@@ -43,9 +49,11 @@ public class MainGUI extends javax.swing.JFrame {
     ArrayList<Cluster> clusters = null;
     private int algNum = 0;
     boolean addClusts2 = false;
-    
+    DispMatLab matlab;
+
     // parameters for clustering
     private double birchDistThresh;
+    private int initialK;
 
     /**
      * Creates new form MainGUI
@@ -208,7 +216,7 @@ public class MainGUI extends javax.swing.JFrame {
             Algorithm alg = openAlgorithm(input.getData());
 
             // displays the graph in matlab then calculates memberships
-            DispMatLab matlab = new DispMatLab(alg.getClusters());
+            matlab = new DispMatLab(alg.getClusters());
             clusters = alg.getClusters();
             Memberships mem = new Memberships(clusters);
 
@@ -221,22 +229,32 @@ public class MainGUI extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_displayActionPerformed
 
+    @SuppressWarnings("null")
     private void saveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveActionPerformed
         // if the user has displayed the data then begin save process
         if (displayed == true) {
             FileWriter fw = null;
             FileWriter fw2 = null;
+            FileWriter fw3 = null;
+
+            File outFile = null;
+            File outFile2 = null;
+            File outFile3 = null;
             try {
                 // ask user where they would like to save, then open file to write
                 // second file is created with the name (FILE NAME)_2.csv
-                File outFile = openFile();
-                File outFile2 = new File(outFile.getParent() + "/"
+                outFile = openFile();
+                outFile2 = new File(outFile.getParent() + "/"
                         + outFile.getName().substring(0, outFile.getName().length() - 4) + "_2.csv");
+                outFile3 = new File(outFile.getParent() + "/"
+                        + outFile.getName().substring(0, outFile.getName().length() - 4) + "_Validity.csv");
                 fw = new FileWriter(outFile.getAbsoluteFile());
                 fw2 = new FileWriter(outFile2.getAbsolutePath());
-                
+                fw3 = new FileWriter(outFile3.getAbsolutePath());
+
                 OutputWriter out;
                 OutputWriter2 out2;
+                OutputWriter3 out3;
                 Memberships mem;
                 Distances dist;
 
@@ -249,10 +267,15 @@ public class MainGUI extends javax.swing.JFrame {
                     dist = new Distances(clusters);
                     clusters = dist.getClusters();
 
+                    ValidityMaster val = new ValidityMaster(clusters);
+
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
+                    out3 = new OutputWriter3(val.getValidity(), fw3);
+
                     fw.append("\n\n\n");
                     fw2.append("\n\n\n");
+                    fw3.append("\n\n\n");
                 } else {
                     // get the dimensions of the data
                     int dim = clusters.get(0).getData().get(0).getPoints().length;
@@ -265,11 +288,19 @@ public class MainGUI extends javax.swing.JFrame {
                     dist = new Distances(clusters);
                     clusters = dist.getClusters();
 
+                    // get validity measures
+                    ValidityMaster val = new ValidityMaster(clusters);
+                    ArrayList<ArrayList> valValues = new ArrayList<>();
+                    valValues.add(val.getValidity());
+
                     // write each clustering with different features dropped 
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
+                    out3 = new OutputWriter3(val.getValidity(), fw3);
+
                     fw.append("\n\nFeature Dropped: 1\n");
                     fw2.append("\n\nFeature Dropped: 1\n");
+                    fw3.append("\n\nFeature Dropped: 1\n");
 
                     for (int i = 0; i < dim; i++) {
                         // drop feature then rerun algorithm on data
@@ -285,26 +316,29 @@ public class MainGUI extends javax.swing.JFrame {
                         dist = new Distances(newClusters);
                         newClusters = dist.getClusters();
 
+                        // get validity
+                        val = new ValidityMaster(newClusters);
+                        valValues.add(val.getValidity());
+
                         // write output to file
                         out = new OutputWriter(newClusters, fw, fuzzy, addClusts2);
                         out2 = new OutputWriter2(newClusters, fw2, fuzzy, addClusts2);
+                        out3 = new OutputWriter3(val.getValidity(), fw3);
                         if (i < dim - 1) {
                             fw.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                             fw2.append("\n\nFeature Dropped: " + (i + 2) + "\n");
+                            fw3.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                         }
                     }
+                    
+                    // display validity measures in MatLab
+                    matlab.startValidity(valValues);
                 }
 
-                // open the files that has been written to
-                Desktop desktop = Desktop.getDesktop();
-                if (outFile2.exists()) {
-                    desktop.open(outFile2);
-                }
-                if (outFile.exists()) {
-                    desktop.open(outFile);
-                }
-
-            } catch (IOException ex) {
+                // disconnect the proxy
+                matlab.disconnectProxy();
+                
+            } catch (IOException | MatlabInvocationException | MatlabConnectionException ex) {
                 Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
             } finally {
                 try {
@@ -313,6 +347,21 @@ public class MainGUI extends javax.swing.JFrame {
                     }
                     if (fw2 != null) {
                         fw2.close();
+                    }
+                    if (fw3 != null) {
+                        fw3.close();
+                    }
+
+                    // open the files that has been written to
+                    Desktop desktop = Desktop.getDesktop();
+                    if (outFile3.exists()) {
+                        desktop.open(outFile3);
+                    }
+                    if (outFile2.exists()) {
+                        desktop.open(outFile2);
+                    }
+                    if (outFile.exists()) {
+                        desktop.open(outFile);
                     }
                 } catch (IOException ex) {
                     Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -328,6 +377,7 @@ public class MainGUI extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
+    @SuppressWarnings("Convert2Lambda")
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
@@ -354,6 +404,7 @@ public class MainGUI extends javax.swing.JFrame {
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new MainGUI().setVisible(true);
             }
@@ -370,6 +421,62 @@ public class MainGUI extends javax.swing.JFrame {
     private javax.swing.JButton save;
     private javax.swing.JTextField text;
     // End of variables declaration//GEN-END:variables
+
+    // asks the user for which algoroithm they want to use then
+    // returns that Algorithm object with new clusters
+    private Algorithm openAlgorithm(ArrayList<DataPoint> input) {
+        AlgorithmChooser algC = new AlgorithmChooser(MainGUI.this, true);
+        Algorithm alg = null;
+        
+        @SuppressWarnings("UnusedAssignment")
+        FCMChoose fcm = null;
+
+        // flag if algorithm is fuzzy or crisp
+        fuzzy = (algC.getSelection() != 0);
+        algNum = algC.getSelection();
+
+        switch (algC.getSelection()) {
+            case 0:
+                // executes birch algorithm
+                DistThreshChoose dis = new DistThreshChoose(MainGUI.this, true);
+                birchDistThresh = dis.getDistThresh();
+                alg = new BirchExec(input, birchDistThresh);
+                break;
+            case 1:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                alg = new FCMExec(input, initialK);
+                break;
+            case 2:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                alg = new GustafsonKessel(input, initialK);
+                break;
+        }
+
+        return alg;
+    }
+
+    // returns that Algorithm object with new clusters (used for the dropping of
+    // features)
+    private Algorithm openAlgorithm(ArrayList<DataPoint> input, int num) throws IOException {
+        Algorithm alg = null;
+
+        switch (num) {
+            case 0:
+                // executes birch algorithm
+                alg = new BirchExec(input, birchDistThresh);
+                break;
+            case 1:
+                alg = new FCMExec(input, initialK);
+                break;
+            case 2:
+                alg = new GustafsonKessel(input, initialK);
+                break;
+        }
+
+        return alg;
+    }
 
     // opens a dialog to chose path to save to
     private File openFile() throws IOException {
@@ -401,47 +508,10 @@ public class MainGUI extends javax.swing.JFrame {
         return option[1].equals(obj);
     }
 
-    // asks the user for which algoroithm they want to use then
-    // returns that Algorithm object with new clusters
-    private Algorithm openAlgorithm(ArrayList<DataPoint> input) {
-        AlgorithmChooser algC = new AlgorithmChooser(MainGUI.this, true);
-        Algorithm alg = null;
-
-        // flag if algorithm is fuzzy or crisp
-        fuzzy = (algC.getSelection() != 0);
-        algNum = algC.getSelection();
-
-        switch (algC.getSelection()) {
-            case 0:
-                // executes birch algorithm
-                DistThreshChoose dis = new DistThreshChoose(MainGUI.this, true);
-                birchDistThresh = dis.getDistThresh();
-                alg = new BirchExec(input, birchDistThresh);
-                break;
-        }
-
-        return alg;
-    }
-    
-    // returns that Algorithm object with new clusters (used for the dropping of
-    // features)
-    private Algorithm openAlgorithm(ArrayList<DataPoint> input, int num) {
-        Algorithm alg = null;
-
-        switch (num) {
-            case 0:
-                // executes birch algorithm
-                alg = new BirchExec(input, birchDistThresh);
-                break;
-        }
-
-        return alg;
-    }
-
     // gets an array list of clusters and concatinates the datapoints
     private ArrayList<DataPoint> createNewInput(ArrayList<Cluster> newClusters) {
         ArrayList<DataPoint> newInp = new ArrayList<>();
-        
+
         newClusters.stream().forEach((clust) -> {
             clust.getData().stream().forEach((pt) -> {
                 newInp.add(pt);
@@ -456,12 +526,11 @@ public class MainGUI extends javax.swing.JFrame {
             addClusts2 = true;
             File newF = getFile();
             return newF;
-        }
-        else {
+        } else {
             return null;
         }
     }
-    
+
     // the user has the option to input the original clusters to the file
     private boolean openDialog2() {
         JOptionPane dia = new JOptionPane(
