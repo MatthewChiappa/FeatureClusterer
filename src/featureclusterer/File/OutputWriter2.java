@@ -12,12 +12,25 @@ public class OutputWriter2 {
     ArrayList<Cluster> clusters = null;
     boolean fuzzy;
     private final boolean addClusts;
+    private final boolean sammon;
 
     public OutputWriter2(ArrayList<Cluster> clusters, FileWriter fw, boolean fuzzy,
             boolean addClusts) throws IOException {
         this.clusters = clusters;
         this.fuzzy = fuzzy;
         this.addClusts = addClusts;
+        this.sammon = clusters.get(0).getData()
+                .get(0).getSamProjections() != null;
+
+        start(fw);
+    }
+    
+    public OutputWriter2(ArrayList<Cluster> clusters, FileWriter fw, boolean fuzzy,
+            boolean addClusts, boolean repeat) throws IOException {
+        this.clusters = clusters;
+        this.fuzzy = fuzzy;
+        this.addClusts = addClusts;
+        this.sammon = false;
 
         start(fw);
     }
@@ -52,7 +65,11 @@ public class OutputWriter2 {
             }
 
             Double minDist = getClosestDist(pt);
-            fw.append(minDist.toString());
+            fw.append(minDist.toString() + ",");
+            
+            if (sammon) {
+                fw.append("," + pt.printSamPoint());
+            }
             
             fw.append("\n");
         }
@@ -74,7 +91,12 @@ public class OutputWriter2 {
             fw.append("Greatest Mem,");
         }
         
-        fw.append("Closest Dist\n");
+        fw.append("Closest Dist,");
+        
+        if (sammon) {
+            fw.append(",Sammon Projection");
+        }
+        fw.append("\n");
     }
 
     // returns the hight membership function

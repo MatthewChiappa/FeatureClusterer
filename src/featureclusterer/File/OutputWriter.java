@@ -12,13 +12,26 @@ public class OutputWriter {
     ArrayList<Cluster> clusters = null;
     boolean fuzzy;
     private final boolean addClusts;
+    private final boolean sammon;
 
     public OutputWriter(ArrayList<Cluster> clusters, FileWriter fw, boolean fuzzy,
             boolean addClusts) throws IOException {
         this.clusters = clusters;
         this.fuzzy = fuzzy;
         this.addClusts = addClusts;
-        
+        this.sammon = clusters.get(0).getData()
+                .get(0).getSamProjections() != null;
+
+        start(fw);
+    }
+    
+    public OutputWriter(ArrayList<Cluster> clusters, FileWriter fw, boolean fuzzy,
+            boolean addClusts, boolean repeat) throws IOException {
+        this.clusters = clusters;
+        this.fuzzy = fuzzy;
+        this.addClusts = addClusts;
+        this.sammon = false;
+
         start(fw);
     }
 
@@ -34,7 +47,7 @@ public class OutputWriter {
 
         for (Cluster clust : clusters) {
             printHeader(fw, count);
-            
+
             for (DataPoint pt : clust.getData()) {
                 fw.append(pt.printPoint());
                 if (addClusts) {
@@ -57,6 +70,10 @@ public class OutputWriter {
 
                 for (int i = 0; i < clusters.size(); i++) {
                     fw.append(dis.get(i).toString() + ",");
+                }
+
+                if (sammon) {
+                    fw.append("," + pt.printSamPoint());
                 }
 
                 fw.append("\n");
@@ -82,15 +99,24 @@ public class OutputWriter {
                 fw.append(",");
             }
         }
-        
-        fw.append(",Distances\n");
-        
+
+        fw.append(",,Distances");
+
+        if (sammon) {
+            for (Cluster cluster : clusters) {
+                fw.append(",");
+            }
+
+            fw.append(",Sammon Projections");
+        }
+        fw.append("\n");
+
         for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length - 1; i++) {
             fw.append(",");
         }
-        
+
         if (fuzzy) {
-            for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length + 1; i++) {
+            for (int i = 0; i < clusters.get(0).getData().get(0).getPoints().length; i++) {
                 fw.append(",");
             }
             for (int i = 0; i < clusters.size(); i++) {
@@ -98,7 +124,7 @@ public class OutputWriter {
             }
             fw.append(',');
         }
-        
+
         for (int i = 0; i < clusters.size(); i++) {
             fw.append("Cluster " + (i + 1) + ",");
         }
@@ -107,14 +133,24 @@ public class OutputWriter {
 
     private void printCenters(FileWriter fw) throws IOException {
         int i = 1;
-        
+
         fw.append("\nCluster Centers");
         for (Cluster clust : clusters) {
             fw.append("\n,Cluster " + i + ":\n");
             fw.append("," + clust.getCentroid().printPoint());
             i++;
         }
-        
+
+        if (sammon) {
+            i = 1;
+            fw.append("\nSammon Centers");
+            for (Cluster clust : clusters) {
+                fw.append("\n,Cluster " + i + ":\n");
+                fw.append("," + clust.getCentroid().printSamPoint());
+                i++;
+            }
+        }
+
         fw.append("\n");
     }
 

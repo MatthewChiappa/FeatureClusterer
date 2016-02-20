@@ -9,8 +9,8 @@ import featureclusterer.Algorithms.Algorithm;
 import featureclusterer.Algorithms.BIRCH.BirchExec;
 import featureclusterer.Algorithms.BIRCH.DistThreshChoose;
 import featureclusterer.Algorithms.FCM.FCMChoose;
-import featureclusterer.Algorithms.FCM.FCMExec;
-import featureclusterer.Algorithms.GK.GustafsonKessel;
+import featureclusterer.Algorithms.Matlab.MatlabAlg;
+import featureclusterer.Algorithms.Matlab.MatlabSammon;
 import featureclusterer.FeatureSelection.Distances;
 import featureclusterer.FeatureSelection.Dropper;
 import featureclusterer.FeatureSelection.Memberships;
@@ -20,13 +20,15 @@ import featureclusterer.File.OutputWriter2;
 import featureclusterer.File.OutputWriter3;
 import featureclusterer.Plot.Cluster;
 import featureclusterer.Plot.DataPoint;
-import featureclusterer.Validity.ValidityMaster;
 import java.awt.Desktop;
 import java.awt.FileDialog;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JDialog;
@@ -36,6 +38,9 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import matlabcontrol.MatlabConnectionException;
 import matlabcontrol.MatlabInvocationException;
+import matlabcontrol.MatlabProxy;
+import matlabcontrol.MatlabProxyFactory;
+import matlabcontrol.MatlabProxyFactoryOptions;
 
 /**
  *
@@ -50,16 +55,51 @@ public class MainGUI extends javax.swing.JFrame {
     private int algNum = 0;
     boolean addClusts2 = false;
     DispMatLab matlab;
+    MatlabProxy proxy = null;
+    Algorithm alg = null;
+    MatlabSammon sammon;
 
     // parameters for clustering
     private double birchDistThresh;
     private int initialK;
+    HashMap<String, Double> params = new HashMap<>();
+    private int didSammon = 0;
 
     /**
      * Creates new form MainGUI
      */
     public MainGUI() {
-        initComponents();
+        try {
+            initComponents();
+            boolean hide = new DispMatLab().openDialog();
+            MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
+                    .setUsePreviouslyControlledSession(true)
+                    .setHidden(hide)
+                    .setMatlabLocation(null).build();
+            MatlabProxyFactory factory = new MatlabProxyFactory(options);
+            proxy = factory.getProxy();
+
+            this.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    if (proxy != null) {
+                        try {
+                            proxy.eval("close all");
+                            proxy.eval("clear all");
+                        } catch (MatlabInvocationException ex) {
+                            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
+            });
+
+            params.put("k", Double.valueOf(initialK));
+            params.put("m", new Double(2));
+            params.put("e", 0.000001);
+            params.put("val", new Double(1));
+        } catch (MatlabConnectionException ex) {
+            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     /**
@@ -208,21 +248,27 @@ public class MainGUI extends javax.swing.JFrame {
         // if the user loaded a file then read file and display, if not display error
         if (loadedDataset != null) {
             displayed = true;
+
             // if the user wants to add a cluster file
             File addClusts = addClusts();
             InputReader input = new InputReader(loadedDataset, addClusts);
 
-            // asks and excecutes algorthim user chooses
-            Algorithm alg = openAlgorithm(input.getData());
+            // asks and excecutes algorthim user chooses and if they would like 
+            // a Sammon or Fuzzy Sammon projection and add title for graph
+            // Sammon projections are added to data points
+            alg = openAlgorithm(input.getData());
+            clusters = alg.getClusters();
+            sammon = runSammon(input.getData());
+            clusters = sammon.addSamProj(clusters);
+            addSamTitle();
 
             // displays the graph in matlab then calculates memberships
-            matlab = new DispMatLab(alg.getClusters());
-            clusters = alg.getClusters();
-            Memberships mem = new Memberships(clusters);
-
-            // display memberships in new jframe
-            clusters = mem.getClusters();
-
+            // and adds title to graph
+            matlab = new DispMatLab(alg.getClusters(), proxy);
+            addClusteringTitle();
+            
+            // Sammon means are added to cluster means
+            clusters = sammon.addSamMeans(clusters);
         } else {
             JOptionPane.showMessageDialog(MainGUI.this,
                     "Please choose an input file.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -236,10 +282,15 @@ public class MainGUI extends javax.swing.JFrame {
             FileWriter fw = null;
             FileWriter fw2 = null;
             FileWriter fw3 = null;
+            FileWriter fw4 = null;
 
             File outFile = null;
             File outFile2 = null;
             File outFile3 = null;
+            File outFile4 = null;
+
+            ArrayList<ArrayList> valValues = new ArrayList<>();
+
             try {
                 // ask user where they would like to save, then open file to write
                 // second file is created with the name (FILE NAME)_2.csv
@@ -247,31 +298,47 @@ public class MainGUI extends javax.swing.JFrame {
                 outFile2 = new File(outFile.getParent() + "/"
                         + outFile.getName().substring(0, outFile.getName().length() - 4) + "_2.csv");
                 outFile3 = new File(outFile.getParent() + "/"
-                        + outFile.getName().substring(0, outFile.getName().length() - 4) + "_Validity.csv");
+                        + outFile.getName().substring(0, outFile.getName().length() - 4) + "_Validity1.csv");
+                outFile4 = new File(outFile.getParent() + "/"
+                        + outFile.getName().substring(0, outFile.getName().length() - 4) + "_Validity2.csv");
                 fw = new FileWriter(outFile.getAbsoluteFile());
                 fw2 = new FileWriter(outFile2.getAbsolutePath());
                 fw3 = new FileWriter(outFile3.getAbsolutePath());
+                fw4 = new FileWriter(outFile4.getAbsolutePath());
 
                 OutputWriter out;
                 OutputWriter2 out2;
                 OutputWriter3 out3;
+                OutputWriter3 out4;
                 Memberships mem;
                 Distances dist;
 
                 // if the user selected to not drop each feature for feature selection,
                 // start writing to file
                 if (!openDialog()) {
-                    mem = new Memberships(clusters);
-                    clusters = mem.getClusters();
-
-                    dist = new Distances(clusters);
-                    clusters = dist.getClusters();
-
-                    ValidityMaster val = new ValidityMaster(clusters);
-
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
-                    out3 = new OutputWriter3(val.getValidity(), fw3);
+                    out3 = new OutputWriter3(alg.returnValidity(), fw3);
+
+                    if (fuzzy) {
+                        fw4.append("Clusters: 2\n");
+                        for (int i = 2; i < 9; i++) {
+                            // change k then rerun algorithm on data
+                            alg = openAlgorithm(createNewInput(clusters), algNum, i);
+
+                            // get validity
+                            valValues.add(alg.returnValidity());
+
+                            // write output to file
+                            out4 = new OutputWriter3(alg.returnValidity(), fw4);
+                            if (i < 8) {
+                                fw4.append("\n\nClusters: " + (i + 1) + "\n");
+                            }
+                        }
+
+                        // display validity measures in MatLab
+                        matlab.startValidity(valValues);
+                    }
 
                     fw.append("\n\n\n");
                     fw2.append("\n\n\n");
@@ -280,23 +347,14 @@ public class MainGUI extends javax.swing.JFrame {
                     // get the dimensions of the data
                     int dim = clusters.get(0).getData().get(0).getPoints().length;
 
-                    // get memberships
-                    mem = new Memberships(clusters);
-                    clusters = mem.getClusters();
-
-                    // get distances
-                    dist = new Distances(clusters);
-                    clusters = dist.getClusters();
-
                     // get validity measures
-                    ValidityMaster val = new ValidityMaster(clusters);
-                    ArrayList<ArrayList> valValues = new ArrayList<>();
-                    valValues.add(val.getValidity());
+                    valValues = new ArrayList<>();
+                    valValues.add(alg.returnValidity());
 
                     // write each clustering with different features dropped 
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
-                    out3 = new OutputWriter3(val.getValidity(), fw3);
+                    out3 = new OutputWriter3(alg.returnValidity(), fw3);
 
                     fw.append("\n\nFeature Dropped: 1\n");
                     fw2.append("\n\nFeature Dropped: 1\n");
@@ -305,39 +363,46 @@ public class MainGUI extends javax.swing.JFrame {
                     for (int i = 0; i < dim; i++) {
                         // drop feature then rerun algorithm on data
                         ArrayList<Cluster> newClusters = new Dropper(clusters, i).getClusters();
-                        Algorithm alg = openAlgorithm(createNewInput(newClusters), algNum);
+                        alg = openAlgorithm(createNewInput(newClusters), algNum);
                         newClusters = alg.getClusters();
 
-                        // get memeberships
-                        mem = new Memberships(newClusters);
-                        newClusters = mem.getClusters();
-
-                        // get distances
-                        dist = new Distances(newClusters);
-                        newClusters = dist.getClusters();
-
                         // get validity
-                        val = new ValidityMaster(newClusters);
-                        valValues.add(val.getValidity());
+                        valValues.add(alg.returnValidity());
 
                         // write output to file
-                        out = new OutputWriter(newClusters, fw, fuzzy, addClusts2);
-                        out2 = new OutputWriter2(newClusters, fw2, fuzzy, addClusts2);
-                        out3 = new OutputWriter3(val.getValidity(), fw3);
+                        out = new OutputWriter(newClusters, fw, fuzzy, addClusts2, true);
+                        out2 = new OutputWriter2(newClusters, fw2, fuzzy, addClusts2, true);
+                        out3 = new OutputWriter3(alg.returnValidity(), fw3);
                         if (i < dim - 1) {
                             fw.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                             fw2.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                             fw3.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                         }
                     }
-                    
-                    // display validity measures in MatLab
-                    matlab.startValidity(valValues);
+
+                    valValues = new ArrayList<>();
+
+                    if (fuzzy) {
+                        fw4.append("Clusters: 2\n");
+                        for (int i = 2; i < 9; i++) {
+                            // change k then rerun algorithm on data
+                            alg = openAlgorithm(createNewInput(clusters), algNum, i);
+
+                            // get validity
+                            valValues.add(alg.returnValidity());
+
+                            // write output to file
+                            out4 = new OutputWriter3(alg.returnValidity(), fw4);
+                            if (i < 8) {
+                                fw4.append("\n\nClusters: " + (i + 1) + "\n");
+                            }
+                        }
+
+                        // display validity measures in MatLab
+                        matlab.startValidity(valValues);
+                    }
                 }
 
-                // disconnect the proxy
-                matlab.disconnectProxy();
-                
             } catch (IOException | MatlabInvocationException | MatlabConnectionException ex) {
                 Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
             } finally {
@@ -351,9 +416,14 @@ public class MainGUI extends javax.swing.JFrame {
                     if (fw3 != null) {
                         fw3.close();
                     }
-
+                    if (fw4 != null) {
+                        fw4.close();
+                    }
                     // open the files that has been written to
                     Desktop desktop = Desktop.getDesktop();
+                    if (outFile4.exists()) {
+                        desktop.open(outFile3);
+                    }
                     if (outFile3.exists()) {
                         desktop.open(outFile3);
                     }
@@ -426,8 +496,6 @@ public class MainGUI extends javax.swing.JFrame {
     // returns that Algorithm object with new clusters
     private Algorithm openAlgorithm(ArrayList<DataPoint> input) {
         AlgorithmChooser algC = new AlgorithmChooser(MainGUI.this, true);
-        Algorithm alg = null;
-        
         @SuppressWarnings("UnusedAssignment")
         FCMChoose fcm = null;
 
@@ -445,12 +513,43 @@ public class MainGUI extends javax.swing.JFrame {
             case 1:
                 fcm = new FCMChoose(MainGUI.this, true);
                 initialK = fcm.getK();
-                alg = new FCMExec(input, initialK);
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 1, proxy);
                 break;
             case 2:
                 fcm = new FCMChoose(MainGUI.this, true);
                 initialK = fcm.getK();
-                alg = new GustafsonKessel(input, initialK);
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 2, proxy);
+                break;
+        }
+
+        return alg;
+    }
+
+    // asks the user for which mapping they want to use
+    private MatlabSammon runSammon(ArrayList<DataPoint> pts) {
+        SammonChooser sam = new SammonChooser(MainGUI.this, true);
+        didSammon = sam.getSelection();
+        MatlabSammon s = new MatlabSammon(proxy, sam.getSelection(), pts);
+        return s;
+    }
+
+    // returns that Algorithm object with new clusters (used for the dropping of
+    // features)
+    private Algorithm openAlgorithm(ArrayList<DataPoint> input, int num) throws IOException {
+        switch (num) {
+            case 0:
+                // executes birch algorithm
+                alg = new BirchExec(input, birchDistThresh);
+                break;
+            case 1:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 1, proxy);
+                break;
+            case 2:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 2, proxy);
                 break;
         }
 
@@ -459,8 +558,8 @@ public class MainGUI extends javax.swing.JFrame {
 
     // returns that Algorithm object with new clusters (used for the dropping of
     // features)
-    private Algorithm openAlgorithm(ArrayList<DataPoint> input, int num) throws IOException {
-        Algorithm alg = null;
+    private Algorithm openAlgorithm(ArrayList<DataPoint> input, int num, int k) throws IOException {
+        params.replace("k", Double.valueOf(k));
 
         switch (num) {
             case 0:
@@ -468,10 +567,10 @@ public class MainGUI extends javax.swing.JFrame {
                 alg = new BirchExec(input, birchDistThresh);
                 break;
             case 1:
-                alg = new FCMExec(input, initialK);
+                alg = new MatlabAlg(input, params, 1, proxy);
                 break;
             case 2:
-                alg = new GustafsonKessel(input, initialK);
+                alg = new MatlabAlg(input, params, 2, proxy);
                 break;
         }
 
@@ -558,6 +657,28 @@ public class MainGUI extends javax.swing.JFrame {
         }
 
         return null;
+    }
+
+    private void addSamTitle() {
+        try {
+            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length()-4);
+            if (didSammon == 1) {
+                proxy.eval("title('" + name + " - Sammon Mapping')");
+            } else if (didSammon == 2) {
+                proxy.eval("title('" + name + " - Fuzzy Sammon Mapping')");
+            }
+        } catch (MatlabInvocationException ex) {
+            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void addClusteringTitle() {
+        try {
+            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length()-4);
+            proxy.eval("title('" + name + " - Clustering')");
+        } catch (MatlabInvocationException ex) {
+            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
 }

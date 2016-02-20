@@ -12,6 +12,7 @@ public class DataPoint {
 
     // variables
     private double[] points = null;
+    private double[] samPoints = null;
     HashMap<Integer, Double> memberships;
     HashMap<Integer, Double> distances;
     int pointNum;
@@ -40,6 +41,7 @@ public class DataPoint {
         memberships = new HashMap<>();
         distances = new HashMap<>();
         this.pointNum = pointNum;
+        this.origClust = 0;
     }
     
     // init
@@ -103,6 +105,9 @@ public class DataPoint {
 
     // returns the original cluster the datapoint belonged to
     public int getOrigClust() {
+        if (origClust == 0){
+            return clustNum;
+        }
         return origClust;
     }
 
@@ -114,6 +119,16 @@ public class DataPoint {
     // used for sorting the datapoints for second file
     public boolean smallerOrig(DataPoint newPoint) {
         return pointNum < Integer.parseInt(newPoint.getOrigNum());
+    }
+    
+    // adds Sammon Projections to the datapoint
+    public void addSamProjections(double[] sam) {
+        this.samPoints = sam;
+    }
+    
+    // returns the Sammon Projection of the datapoint
+    public double[] getSamProjections() {
+        return samPoints;
     }
     
     // Euclidean distance formula from point to point
@@ -154,6 +169,10 @@ public class DataPoint {
     // print method for debugging and printing to file
     public String printPoint() {
         return Arrays.toString(points).replaceAll("\\[|\\]", "");
+    }
+
+    public String printSamPoint() {
+        return Arrays.toString(samPoints).replaceAll("\\[|\\]", "");
     }
 
 }

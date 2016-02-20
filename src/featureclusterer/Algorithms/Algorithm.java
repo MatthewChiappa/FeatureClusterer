@@ -11,4 +11,5 @@ import java.util.ArrayList;
 
 public interface Algorithm {
     public ArrayList<Cluster> getClusters();
+    public ArrayList<Double> returnValidity();
 }

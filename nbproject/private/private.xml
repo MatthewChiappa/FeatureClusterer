@@ -3,11 +3,12 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClusterer/src/featureclusterer/GUI/MainGUI.java</file>
-            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClusterer/src/featureclusterer/Validity/ValidityMaster.java</file>
-            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClusterer/src/featureclusterer/Algorithms/GK/GustafsonKessel.java</file>
-            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClusterer/src/featureclusterer/Algorithms/FCM/FCMExec.java</file>
-            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClusterer/src/featureclusterer/GUI/DispMatLab.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/Algorithms/Matlab/MatlabSammon.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/GUI/SammonChooser.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/Plot/DataPoint.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/GUI/DispMatLab.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/GUI/MainGUI.java</file>
+            <file>file:/Users/MattChiappa/NetBeansProjects/FeatureClustererVer2/src/featureclusterer/File/InputReader.java</file>
         </group>
     </open-files>
 </project-private>

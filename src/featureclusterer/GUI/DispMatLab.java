@@ -13,13 +13,36 @@ import matlabcontrol.MatlabProxy;
 import matlabcontrol.MatlabProxyFactory;
 import matlabcontrol.MatlabProxyFactoryOptions;
 
-public class DispMatLab {
+public final class DispMatLab {
 
     ArrayList<Cluster> clusters = new ArrayList<>();
     MatlabProxy proxy = null;
+    int j = 0, max = 13;
+
+    public DispMatLab() {
+
+    }
 
     public DispMatLab(ArrayList<Cluster> clusters) {
         this.clusters = clusters;
+        try {
+            //Create a proxy, which we will use to control MATLAB
+            boolean hide = openDialog();
+            MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
+                    .setUsePreviouslyControlledSession(true)
+                    .setHidden(hide)
+                    .setMatlabLocation(null).build();
+            MatlabProxyFactory factory = new MatlabProxyFactory(options);
+            proxy = factory.getProxy();
+            start();
+        } catch (MatlabInvocationException | MatlabConnectionException ex) {
+            Logger.getLogger(DispMatLab.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public DispMatLab(ArrayList<Cluster> clusters, MatlabProxy proxy) {
+        this.clusters = clusters;
+        this.proxy = proxy;
         try {
             start();
         } catch (MatlabInvocationException | MatlabConnectionException ex) {
@@ -28,17 +51,7 @@ public class DispMatLab {
     }
 
     private void start() throws MatlabInvocationException, MatlabConnectionException {
-
-        boolean hide = openDialog();
-
-        //Create a proxy, which we will use to control MATLAB
-        MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
-                .setUsePreviouslyControlledSession(true)
-                .setHidden(hide)
-                .setMatlabLocation(null).build();
-        MatlabProxyFactory factory = new MatlabProxyFactory(options);
-        proxy = factory.getProxy();
-
+        proxy.eval("figure('Name', 'Clustering')");
         int n = 0;
         for (Cluster clust : clusters) {
             n = clust.getData().stream().map((_item) -> 1)
@@ -75,7 +88,7 @@ public class DispMatLab {
         proxy.eval("grid");
     }
 
-    private boolean openDialog() {
+    boolean openDialog() {
         JOptionPane matlab = new JOptionPane(
                 "Would you like to open a MATLAB session with the graph?");
         Object[] option = new String[]{"No", "Yes"};
@@ -88,6 +101,11 @@ public class DispMatLab {
     }
 
     private void executePoints(int num, double[] x, double[] y, double[] z) throws MatlabInvocationException {
+        proxy.eval("colours = ['b';'g';'m';'c';'y';'k';'g';'b';'c';'m';'y';'k'];\n"
+                + "syms = ['*';'*';'*';'*';'*';'*';'p';'x';'s';'+';'d';'v';'o'];\n"
+                + "lc = length(colours);\n"
+                + "ls = length(syms);");
+
         String plotTxt;
         if (clusters.get(0).getData().get(0).getPoints().length > 2) {
             plotTxt = "x = [";
@@ -112,7 +130,8 @@ public class DispMatLab {
             proxy.eval("clust" + num + ".y = y;");
             proxy.eval("clust" + num + ".z = z;");
 
-            proxy.eval("scatter3(x, y, z, '*','LineWidth',5.5)");
+            proxy.eval("colsym = [colours(mod(" + (j + 1) + "-1,lc)+1), syms(mod(" + (j + 1) + "-1,ls)+1)];"
+                    +"scatter3(x, y, z, colsym,'LineWidth',5.5)");
         } else {
             plotTxt = "x = [";
             for (int i = 0; i < x.length; i++) {
@@ -130,7 +149,13 @@ public class DispMatLab {
             proxy.eval("clust" + num + ".y = y;");
             num++;
 
-            proxy.eval("scatter(x, y, '*','LineWidth',5.5)");
+            proxy.eval("colsym = [colours(mod(" + (j + 1) + "-1,lc)+1), syms(mod(" + (j + 1) + "-1,ls)+1)];"
+                    +"scatter(x, y, colsym,'LineWidth',5.5)");
+        }
+
+        j++;
+        if (j > max) {
+            j = 0;
         }
     }
 
@@ -139,11 +164,11 @@ public class DispMatLab {
         if (clust.getData().get(0).getPoints().length > 2) {
             DataPoint center = clust.getCentroid();
             proxy.eval("plot3(" + center.getPoints()[0] + ", "
-                    + center.getPoints()[1] + ", " + center.getPoints()[2] + ", 'r^','MarkerSize',10)");
+                    + center.getPoints()[1] + ", " + center.getPoints()[2] + ", 'r^','MarkerSize',16, 'MarkerEdgeColor','k','MarkerFaceColor','r')");
         } else {
             DataPoint center = clust.getCentroid();
             proxy.eval("plot( " + center.getPoints()[0] + ", "
-                    + center.getPoints()[1] + ", 'r^','MarkerSize',10)");
+                    + center.getPoints()[1] + ", 'r^','MarkerSize',16, 'MarkerEdgeColor','k','MarkerFaceColor','r')");
         }
     }
 
@@ -158,21 +183,21 @@ public class DispMatLab {
         double[] dunn = new double[validity.size()];
         double[] altDunn = new double[validity.size()];
         int i = 0;
-        
+
         for (ArrayList list : validity) {
-                pc[i] = (double) list.get(0);
-                cd[i] = (double) list.get(1);
-                sc[i] = (double) list.get(2);
-                s[i] = (double) list.get(3);
-                xb[i] = (double) list.get(4);
-                dunn[i] = (double) list.get(5);
-                altDunn[i] = (double) list.get(6);
-                i++;
+            pc[i] = (double) list.get(0);
+            cd[i] = (double) list.get(1);
+            sc[i] = (double) list.get(2);
+            s[i] = (double) list.get(3);
+            xb[i] = (double) list.get(4);
+            dunn[i] = (double) list.get(5);
+            altDunn[i] = (double) list.get(6);
+            i++;
         }
 
         // st the x and y coordinates for line graphs
         String plotTxt;
-        
+
         plotTxt = "pc = [";
         for (int x = 0; x < pc.length; x++) {
             plotTxt += pc[x] + " ";
@@ -216,7 +241,7 @@ public class DispMatLab {
         proxy.eval(plotTxt + "];");
 
         plotTxt = "x = [";
-        for (int x = 0; x < validity.size(); x++) {
+        for (int x = 2; x < 9; x++) {
             plotTxt += x + " ";
         }
         proxy.eval(plotTxt + "];");
@@ -228,27 +253,39 @@ public class DispMatLab {
     // function that displays the validity measure in three
     // line graphs
     private void dispValidity() throws MatlabInvocationException {
-        proxy.eval("figure('Name', 'PC_CD_SC')");
+        proxy.eval("figure('Name', 'PC_CE')");
         proxy.eval("hold on");
+        proxy.eval("set(gca,'xtick',2:8)");
+        proxy.eval("xlabel('Clusters')");
+        proxy.eval("ylabel('Validation Measure')");
         proxy.eval("grid");
+        proxy.eval("title('Partition Coefficent(PC), Classification Entropy(CE)')");
         proxy.eval("plot(x, pc, 'b', 'LineWidth', 3)");
         proxy.eval("plot(x, cd, 'g--*', 'LineWidth', 3)");
-        proxy.eval("plot(x, sc, 'r--', 'LineWidth', 3)");
-        proxy.eval("legend('PC', 'CD', 'SC');");
+        proxy.eval("legend('PC', 'CE');");
 
-        proxy.eval("figure('Name', 'S_XB')");
+        proxy.eval("figure('Name', 'SC_XB')");
         proxy.eval("hold on");
+        proxy.eval("set(gca,'xtick',2:8)");
+        proxy.eval("title('Partition Index(SC), Xie-Beni Index(XB)')");
+        proxy.eval("xlabel('Clusters')");
+        proxy.eval("ylabel('Validation Measure')");
+        proxy.eval("grid");
+        proxy.eval("plot(x, sc, 'r--', 'LineWidth', 3)");
+        proxy.eval("plot(x, xb, 'm--*', 'LineWidth', 3)");
+        proxy.eval("legend('SC', 'XB');");
+
+        proxy.eval("figure('Name', 'S_Dunn_AltDunn')");
+        proxy.eval("hold on");
+        proxy.eval("set(gca,'xtick',2:8)");
+        proxy.eval("title('Seperation Index(S), Dunn Index(DI), Alternative Dunn Index(ADI)')");
+        proxy.eval("xlabel('Clusters')");
+        proxy.eval("ylabel('Validation Measure')");
         proxy.eval("grid");
         proxy.eval("plot(x, s, 'c', 'LineWidth', 3)");
-        proxy.eval("plot(x, xb, 'm--*', 'LineWidth', 3)");
-        proxy.eval("legend('S', 'XB');");
-
-        proxy.eval("figure('Name', 'Dunn_AltDunn')");
-        proxy.eval("hold on");
-        proxy.eval("grid");
         proxy.eval("plot(x, dunn, 'k', 'LineWidth', 3)");
         proxy.eval("plot(x, altDunn, 'b--*', 'LineWidth', 3)");
-        proxy.eval("legend('Dunn', 'AltDunn');");
+        proxy.eval("legend('S', 'DI', 'ADI');");
     }
 
     public void disconnectProxy() {
