@@ -80,7 +80,7 @@ public class MatlabFCM implements Algorithm {
         }
     }
 
-    private void getDistances() throws MatlabInvocationException {
+    public void getDistances() throws MatlabInvocationException {
         MatlabTypeConverter processor = new MatlabTypeConverter(proxy);
         double[][] distances = processor.getNumericArray("result.data.d").getRealArray2D();
         
@@ -92,9 +92,34 @@ public class MatlabFCM implements Algorithm {
             x++;
         }
     }
+    
+    public ArrayList<Cluster> getDist() throws MatlabInvocationException {
+        getDistances();
+        return clusters;
+    }
 
     @Override
     public ArrayList<Double> returnValidity() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvectors() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvalues() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getDistance() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getSilhouette() throws MatlabInvocationException {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 

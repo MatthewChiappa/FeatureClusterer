@@ -9,6 +9,8 @@ f0=param.c;
 %default parameters
 if exist('param.m')==1, m = param.m;else m = 2;end;
 if exist('param.e')==1, e = param.m;else e = 1e-4;end;
+	
+p=size(X,2);
 
 [N,n] = size(X);
 [Nf0,nf0] = size(f0); 
@@ -21,10 +23,13 @@ if max(Nf0,nf0) == 1, 		% only number of cluster given
   mm = mean(X);             %mean of the data (1,n)
   aa = max(abs(X - ones(N,1)*mm)); %
   v = 2*(ones(c,1)*aa).*(rand(c,n)-0.5) + ones(c,1)*mm;
-  for j = 1 : c,
-    xv = X - X1*v(j,:);
-    d(:,j) = sum((xv*eye(n).*xv),2);
-  end;
+  
+  XX = sqrt(sum(X.*X,2)); 
+  X = X ./ XX(:,ones(1,p));
+  VV = sqrt(sum(v.*v,2)); 
+  Y = v ./ VV(:,ones(1,p));
+  d = 1 - X*Y';
+
   d = (d+1e-10).^(-1/(m-1));
   f0 = (d ./ (sum(d,2)*ones(1,c)));
   
@@ -47,11 +52,12 @@ while  max(max(f0-f)) > e
   v = (fm'*X)./(sumf'*ones(1,n));
   
   % distance formula
-  for j = 1 : c,
-    xv = X - X1*v(j,:);
-    d(:,j) = sum((xv*eye(n).*xv),2);
-  end;
-  distout=sqrt(d);
+  XX = sqrt(sum(X.*X,2)); 
+  X = X ./ XX(:,ones(1,p));
+  VV = sqrt(sum(v.*v,2)); 
+  Y = v ./ VV(:,ones(1,p));
+  d = 1 - X*Y';
+  distout = d;
   
   J(iter) = sum(sum(f0.*d));
   % Update f0
@@ -62,7 +68,26 @@ end
 fm = f.^m; 
 sumf = sum(fm);
 
+% calculate eigenvectors and eigenvalues
+V = zeros(c,n);                % eigenvectors
+D = V;                          % eigenvalues
+
+% calculate P,V,D,M
+for j = 1 : c,                        
+    xv = X - ones(N,1)*v(j,:);
+    % Calculate covariance matrix
+    A = ones(n,1)*fm(:,j)'.*xv'*xv/sumf(j);
+    % Calculate eigen values and eigen vectors
+    [ev,ed] = eig(A); ed = diag(ed)';
+    ev = ev(:,ed == min(ed));
+    % Put cluster info in one matrix
+    V(j,:) = ev';
+    D(j,:) = ed;
+end
+
 %results
+result.cluster.V = V;
+result.cluster.D = D;
 result.data.f=f0;
 result.data.d=distout;
 result.cluster.v=v;

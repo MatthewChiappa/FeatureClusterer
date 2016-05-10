@@ -89,7 +89,8 @@ public class MatlabGK implements Algorithm {
         }
     }
 
-    private void getDistances() throws MatlabInvocationException {
+    @Override
+    public void getDistances() throws MatlabInvocationException {
         MatlabTypeConverter processor = new MatlabTypeConverter(proxy);
         double[][] distances = processor.getNumericArray("result.data.d").getRealArray2D();
         
@@ -104,6 +105,26 @@ public class MatlabGK implements Algorithm {
 
     @Override
     public ArrayList<Double> returnValidity() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvectors() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvalues() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getDistance() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getSilhouette() throws MatlabInvocationException {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

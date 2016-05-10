@@ -7,9 +7,16 @@
 package featureclusterer.Algorithms;
 
 import featureclusterer.Plot.Cluster;
+import featureclusterer.Plot.DataPoint;
 import java.util.ArrayList;
+import matlabcontrol.MatlabInvocationException;
 
 public interface Algorithm {
     public ArrayList<Cluster> getClusters();
     public ArrayList<Double> returnValidity();
+    public ArrayList<DataPoint> returnEigenvectors() throws MatlabInvocationException;
+    public ArrayList<DataPoint> returnEigenvalues() throws MatlabInvocationException;
+    public void getDistance() throws MatlabInvocationException;
+    public void getDistances() throws MatlabInvocationException;
+    public void getSilhouette() throws MatlabInvocationException;
 }

@@ -30,7 +30,7 @@ public class InputReader {
         if (clusters != null) {
             this.clust = true;
         }
-        
+
         start();
     }
 
@@ -69,7 +69,9 @@ public class InputReader {
                     String[] tmp = line.split("\\s+");
                     dataPoints = new double[tmp.length];
                     for (int i = 0; i < dataPoints.length; i++) {
-                        dataPoints[i] = Double.parseDouble(tmp[i]);
+                        if (!tmp[i].equals("")) {
+                            dataPoints[i] = Double.parseDouble(tmp[i]);
+                        }
                     }
 
                     DataPoint newPt = new DataPoint(dataPoints, pointNum);

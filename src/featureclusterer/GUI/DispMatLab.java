@@ -51,7 +51,7 @@ public final class DispMatLab {
     }
 
     private void start() throws MatlabInvocationException, MatlabConnectionException {
-        proxy.eval("figure('Name', 'Clustering')");
+        proxy.eval("clustering = figure('Name', 'Clustering')");
         int n = 0;
         for (Cluster clust : clusters) {
             n = clust.getData().stream().map((_item) -> 1)
@@ -101,7 +101,7 @@ public final class DispMatLab {
     }
 
     private void executePoints(int num, double[] x, double[] y, double[] z) throws MatlabInvocationException {
-        proxy.eval("colours = ['b';'g';'m';'c';'y';'k';'g';'b';'c';'m';'y';'k'];\n"
+        proxy.eval("colours = ['b';'g';'m';'c';'y';'k';'b';'g';'c';'m';'y';'k'];\n"
                 + "syms = ['*';'*';'*';'*';'*';'*';'p';'x';'s';'+';'d';'v';'o'];\n"
                 + "lc = length(colours);\n"
                 + "ls = length(syms);");
@@ -156,6 +156,10 @@ public final class DispMatLab {
         j++;
         if (j > max) {
             j = 0;
+        }
+        
+        if (clusters.get(0).getData().get(0).getPoints().length == 2) {
+            printSurfacePlot();
         }
     }
 
@@ -253,7 +257,7 @@ public final class DispMatLab {
     // function that displays the validity measure in three
     // line graphs
     private void dispValidity() throws MatlabInvocationException {
-        proxy.eval("figure('Name', 'PC_CE')");
+        proxy.eval("pcce = figure('Name', 'PC_CE')");
         proxy.eval("hold on");
         proxy.eval("set(gca,'xtick',2:8)");
         proxy.eval("xlabel('Clusters')");
@@ -264,7 +268,7 @@ public final class DispMatLab {
         proxy.eval("plot(x, cd, 'g--*', 'LineWidth', 3)");
         proxy.eval("legend('PC', 'CE');");
 
-        proxy.eval("figure('Name', 'SC_XB')");
+        proxy.eval("scxb = figure('Name', 'SC_XB')");
         proxy.eval("hold on");
         proxy.eval("set(gca,'xtick',2:8)");
         proxy.eval("title('Partition Index(SC), Xie-Beni Index(XB)')");
@@ -275,7 +279,7 @@ public final class DispMatLab {
         proxy.eval("plot(x, xb, 'm--*', 'LineWidth', 3)");
         proxy.eval("legend('SC', 'XB');");
 
-        proxy.eval("figure('Name', 'S_Dunn_AltDunn')");
+        proxy.eval("dunnA = figure('Name', 'S_Dunn_AltDunn')");
         proxy.eval("hold on");
         proxy.eval("set(gca,'xtick',2:8)");
         proxy.eval("title('Seperation Index(S), Dunn Index(DI), Alternative Dunn Index(ADI)')");
@@ -290,5 +294,24 @@ public final class DispMatLab {
 
     public void disconnectProxy() {
         proxy.disconnect();
+    }
+
+    private void printSurfacePlot() throws MatlabInvocationException {
+        proxy.eval("hold on");
+                proxy.eval("u = xlim;\n"
+                + "j = ylim;\n"
+                + "[X Y] = meshgrid([min(u(1),j(1)):.1:max(u(2),j(2))]);\n"
+                + "\n"
+                + "f = [data.Xold(:,1)];\n"
+                + "g = [data.Xold(:,2)];\n"
+                + "\n"
+                + "m = [];\n"
+                + "\n"
+                + "for i=1:size(result.data.f)\n"
+                + "    m = [m; max(result.data.f(i,:))];\n"
+                + "end\n"
+                + "\n"
+                + "Z = griddata(f,g,m,X,Y);\n"
+                + "surf(X,Y,Z)");
     }
 }

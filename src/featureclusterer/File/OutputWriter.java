@@ -24,7 +24,7 @@ public class OutputWriter {
 
         start(fw);
     }
-    
+
     public OutputWriter(ArrayList<Cluster> clusters, FileWriter fw, boolean fuzzy,
             boolean addClusts, boolean repeat) throws IOException {
         this.clusters = clusters;
@@ -154,4 +154,25 @@ public class OutputWriter {
         fw.append("\n");
     }
 
+    public void printVectors(ArrayList<DataPoint> points, FileWriter fw) throws IOException {
+        int i = 1;
+        fw.append("\nEigenvectors");
+        for (DataPoint pt : points) {
+            fw.append("\n," + pt.printPoint());
+            i++;
+        }
+
+        fw.append("\n");
+    }
+    
+    public void printValues(ArrayList<DataPoint> points, FileWriter fw) throws IOException {
+        int i = 1;
+        fw.append("\nEigenvalues");
+        for (DataPoint pt : points) {
+            fw.append("\n," + pt.printPoint());
+            i++;
+        }
+
+        fw.append("\n");
+    }
 }

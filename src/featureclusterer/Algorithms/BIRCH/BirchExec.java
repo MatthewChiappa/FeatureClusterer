@@ -5,6 +5,7 @@ import featureclusterer.Plot.Cluster;
 import featureclusterer.Plot.DataPoint;
 import edu.gatech.gtisc.jbirch.cftree.CFTree;
 import java.util.ArrayList;
+import matlabcontrol.MatlabInvocationException;
 
 public class BirchExec implements Algorithm {
 
@@ -73,6 +74,31 @@ public class BirchExec implements Algorithm {
 
     @Override
     public ArrayList<Double> returnValidity() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvectors() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public ArrayList<DataPoint> returnEigenvalues() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getDistance() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getSilhouette() throws MatlabInvocationException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void getDistances() throws MatlabInvocationException {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 

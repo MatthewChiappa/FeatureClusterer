@@ -37,7 +37,7 @@
                       </Group>
                   </Group>
               </Group>
-              <EmptySpace pref="41" max="32767" attributes="0"/>
+              <EmptySpace pref="39" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -66,10 +66,14 @@
         <Component class="javax.swing.JList" name="jList1">
           <Properties>
             <Property name="model" type="javax.swing.ListModel" editor="org.netbeans.modules.form.editors2.ListModelEditor">
-              <StringArray count="3">
+              <StringArray count="7">
                 <StringItem index="0" value="BIRCH"/>
                 <StringItem index="1" value="Fuzzy C-Means"/>
                 <StringItem index="2" value="Gustafson Kessel"/>
+                <StringItem index="3" value="Mahalanobis Fuzzy C-Means"/>
+                <StringItem index="4" value="Chebychev Fuzzy C-Means"/>
+                <StringItem index="5" value="Minkovski Fuzzy C-Means"/>
+                <StringItem index="6" value="Cosine Fuzzy C-Means"/>
               </StringArray>
             </Property>
           </Properties>

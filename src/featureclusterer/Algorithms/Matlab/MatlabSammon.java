@@ -23,7 +23,7 @@ public class MatlabSammon {
 
         if (num > 0) {
             try {
-                proxy.eval("figure('Name', 'Mapping')");
+                proxy.eval("mapping = figure('Name', 'Mapping')");
                 proxy.eval("colors={'k.' 'gx' 'b+' 'm.' 'r.' 'c.' "
                         + "'k*' 'g*' 'b*' 'm*' 'r*' 'c*' };");
                 convertPts(points);
@@ -160,13 +160,10 @@ public class MatlabSammon {
         proxy.eval("hold on");
         proxy.eval("u = xlim;\n"
                 + "j = ylim;\n"
-                + "[X Y] = meshgrid([min(u(1),j(1)):.01:max(u(2),j(2))]);\n"
+                + "[X Y] = meshgrid([min(u(1),j(1)):.03:max(u(2),j(2))]);\n"
                 + "\n"
-                + "siz = size(result.proj.vp);\n"
-                + "a = result.proj.vp(:,1);\n"
-                + "b = result.proj.vp(:,2);\n"
-                + "f = [a;result.proj.P(:,1)];\n"
-                + "g = [b;result.proj.P(:,2)];\n"
+                + "f = [result.proj.P(:,1)];\n"
+                + "g = [result.proj.P(:,2)];\n"
                 + "\n"
                 + "m = [];\n"
                 + "\n"
@@ -174,9 +171,7 @@ public class MatlabSammon {
                 + "    m = [m; max(result.data.f(i,:))];\n"
                 + "end\n"
                 + "\n"
-                + "e = ones(siz(1), 1);\n"
-                + "h = [e;m];\n"
-                + "Z = griddata(f,g,h,X,Y);\n"
+                + "Z = griddata(f,g,m,X,Y);\n"
                 + "surf(X,Y,Z)");
     }
 }

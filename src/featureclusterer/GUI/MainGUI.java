@@ -27,6 +27,7 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
@@ -64,6 +65,8 @@ public class MainGUI extends javax.swing.JFrame {
     private int initialK;
     HashMap<String, Double> params = new HashMap<>();
     private int didSammon = 0;
+    private String path;
+    private boolean drop;
 
     /**
      * Creates new form MainGUI
@@ -229,7 +232,7 @@ public class MainGUI extends javax.swing.JFrame {
 
     private void browseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_browseActionPerformed
         // open a file dialog so the user can import a txt data file
-        JFileChooser fc = new JFileChooser(new File("/Users/MattChiappa/Documents/Research/Datasets"));
+        JFileChooser fc = new JFileChooser(new File("/Users/MattChiappa/Documents/Research/2016"));
         fc.setAcceptAllFileFilterUsed(false);
 
         // filter only txt documents
@@ -249,14 +252,23 @@ public class MainGUI extends javax.swing.JFrame {
         if (loadedDataset != null) {
             displayed = true;
 
-            // if the user wants to add a cluster file
-            File addClusts = addClusts();
-            InputReader input = new InputReader(loadedDataset, addClusts);
+            // if the user wants to add a cluster file 
+            // (change null to addClusts FEATURE DISABLED)
+            // File addClusts = addClusts();
+            InputReader input = new InputReader(loadedDataset, null);
 
             // asks and excecutes algorthim user chooses and if they would like 
             // a Sammon or Fuzzy Sammon projection and add title for graph
             // Sammon projections are added to data points
             alg = openAlgorithm(input.getData());
+
+            try {
+                alg.getSilhouette();
+                addShilTitle();
+            } catch (MatlabInvocationException ex) {
+                Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
             clusters = alg.getClusters();
             sammon = runSammon(input.getData());
             clusters = sammon.addSamProj(clusters);
@@ -266,7 +278,7 @@ public class MainGUI extends javax.swing.JFrame {
             // and adds title to graph
             matlab = new DispMatLab(alg.getClusters(), proxy);
             addClusteringTitle();
-            
+
             // Sammon means are added to cluster means
             clusters = sammon.addSamMeans(clusters);
         } else {
@@ -295,6 +307,8 @@ public class MainGUI extends javax.swing.JFrame {
                 // ask user where they would like to save, then open file to write
                 // second file is created with the name (FILE NAME)_2.csv
                 outFile = openFile();
+                path = outFile.getParent() + "/";
+
                 outFile2 = new File(outFile.getParent() + "/"
                         + outFile.getName().substring(0, outFile.getName().length() - 4) + "_2.csv");
                 outFile3 = new File(outFile.getParent() + "/"
@@ -316,9 +330,20 @@ public class MainGUI extends javax.swing.JFrame {
                 // if the user selected to not drop each feature for feature selection,
                 // start writing to file
                 if (!openDialog()) {
+                    // set the distances to the correct modification
+                    alg.getDistance();
+                    clusters = alg.getClusters();
+
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
                     out3 = new OutputWriter3(alg.returnValidity(), fw3);
+
+                    // print eigenvectors and eigenvalues if GK  or Modified 
+                    // FCM algorithm
+                    if (algNum > 2) {
+                        out.printVectors(alg.returnEigenvectors(), fw);
+                        out.printValues(alg.returnEigenvalues(), fw);
+                    }
 
                     if (fuzzy) {
                         fw4.append("Clusters: 2\n");
@@ -344,6 +369,7 @@ public class MainGUI extends javax.swing.JFrame {
                     fw2.append("\n\n\n");
                     fw3.append("\n\n\n");
                 } else {
+                    drop = true;
                     // get the dimensions of the data
                     int dim = clusters.get(0).getData().get(0).getPoints().length;
 
@@ -351,10 +377,20 @@ public class MainGUI extends javax.swing.JFrame {
                     valValues = new ArrayList<>();
                     valValues.add(alg.returnValidity());
 
+                    // set the distances to the correct modification
+                    alg.getDistance();
+                    clusters = alg.getClusters();
+
                     // write each clustering with different features dropped 
                     out = new OutputWriter(clusters, fw, fuzzy, addClusts2);
                     out2 = new OutputWriter2(clusters, fw2, fuzzy, addClusts2);
                     out3 = new OutputWriter3(alg.returnValidity(), fw3);
+
+                    // print eigenvectors and eigenvalues if GK algorithm
+                    if (algNum > 2) {
+                        out.printVectors(alg.returnEigenvectors(), fw);
+                        out.printValues(alg.returnEigenvalues(), fw);
+                    }
 
                     fw.append("\n\nFeature Dropped: 1\n");
                     fw2.append("\n\nFeature Dropped: 1\n");
@@ -369,6 +405,10 @@ public class MainGUI extends javax.swing.JFrame {
                         // get validity
                         valValues.add(alg.returnValidity());
 
+                        // set the distances to the correct modification
+                        alg.getDistance();
+                        clusters = alg.getClusters();
+
                         // write output to file
                         out = new OutputWriter(newClusters, fw, fuzzy, addClusts2, true);
                         out2 = new OutputWriter2(newClusters, fw2, fuzzy, addClusts2, true);
@@ -377,6 +417,13 @@ public class MainGUI extends javax.swing.JFrame {
                             fw.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                             fw2.append("\n\nFeature Dropped: " + (i + 2) + "\n");
                             fw3.append("\n\nFeature Dropped: " + (i + 2) + "\n");
+                        }
+
+                        // print eigenvectors and eigenvalues if GK algorithm 
+                        // or Modified FCM algorithm
+                        if (algNum > 2) {
+                            out.printVectors(alg.returnEigenvectors(), fw);
+                            out.printValues(alg.returnEigenvalues(), fw);
                         }
                     }
 
@@ -403,6 +450,11 @@ public class MainGUI extends javax.swing.JFrame {
                     }
                 }
 
+                // save figure files and clean up csv files
+                saveMatlabFigs();
+                //cleanUpFiles();
+                saveCompleted();
+
             } catch (IOException | MatlabInvocationException | MatlabConnectionException ex) {
                 Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
             } finally {
@@ -422,16 +474,16 @@ public class MainGUI extends javax.swing.JFrame {
                     // open the files that has been written to
                     Desktop desktop = Desktop.getDesktop();
                     if (outFile4.exists()) {
-                        desktop.open(outFile3);
+                        //desktop.open(outFile3);
                     }
                     if (outFile3.exists()) {
-                        desktop.open(outFile3);
+                        //desktop.open(outFile3);
                     }
                     if (outFile2.exists()) {
-                        desktop.open(outFile2);
+                        //desktop.open(outFile2);
                     }
                     if (outFile.exists()) {
-                        desktop.open(outFile);
+                        //desktop.open(outFile);
                     }
                 } catch (IOException ex) {
                     Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -522,6 +574,30 @@ public class MainGUI extends javax.swing.JFrame {
                 params.replace("k", Double.valueOf(initialK));
                 alg = new MatlabAlg(input, params, 2, proxy);
                 break;
+            case 3:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 3, proxy);
+                break;
+            case 4:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 4, proxy);
+                break;
+            case 5:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 5, proxy);
+                break;
+            case 6:
+                fcm = new FCMChoose(MainGUI.this, true);
+                initialK = fcm.getK();
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 6, proxy);
+                break;
         }
 
         return alg;
@@ -551,6 +627,22 @@ public class MainGUI extends javax.swing.JFrame {
                 params.replace("k", Double.valueOf(initialK));
                 alg = new MatlabAlg(input, params, 2, proxy);
                 break;
+            case 3:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 3, proxy);
+                break;
+            case 4:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 4, proxy);
+                break;
+            case 5:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 5, proxy);
+                break;
+            case 6:
+                params.replace("k", Double.valueOf(initialK));
+                alg = new MatlabAlg(input, params, 6, proxy);
+                break;
         }
 
         return alg;
@@ -572,6 +664,18 @@ public class MainGUI extends javax.swing.JFrame {
             case 2:
                 alg = new MatlabAlg(input, params, 2, proxy);
                 break;
+            case 3:
+                alg = new MatlabAlg(input, params, 3, proxy);
+                break;
+            case 4:
+                alg = new MatlabAlg(input, params, 4, proxy);
+                break;
+            case 5:
+                alg = new MatlabAlg(input, params, 5, proxy);
+                break;
+            case 6:
+                alg = new MatlabAlg(input, params, 6, proxy);
+                break;
         }
 
         return alg;
@@ -580,7 +684,8 @@ public class MainGUI extends javax.swing.JFrame {
     // opens a dialog to chose path to save to
     private File openFile() throws IOException {
         FileDialog fDialog = new FileDialog(this, "Save", FileDialog.SAVE);
-        fDialog.setFile("*.csv");
+        fDialog.setFile(loadedDataset.getName()
+                .substring(0, loadedDataset.getName().length() - 4) + ".csv");
         fDialog.setVisible(true);
         String path = fDialog.getDirectory() + fDialog.getFile();
         File outFile = new File(path);
@@ -661,7 +766,7 @@ public class MainGUI extends javax.swing.JFrame {
 
     private void addSamTitle() {
         try {
-            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length()-4);
+            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length() - 4);
             if (didSammon == 1) {
                 proxy.eval("title('" + name + " - Sammon Mapping')");
             } else if (didSammon == 2) {
@@ -674,11 +779,64 @@ public class MainGUI extends javax.swing.JFrame {
 
     private void addClusteringTitle() {
         try {
-            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length()-4);
+            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length() - 4);
             proxy.eval("title('" + name + " - Clustering')");
         } catch (MatlabInvocationException ex) {
             Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
+    private void addShilTitle() {
+        try {
+            String name = loadedDataset.getName().substring(0, loadedDataset.getName().length() - 4);
+            proxy.eval("title('" + name + " - Silhouette w/ Cosine Distance')");
+        } catch (MatlabInvocationException ex) {
+            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void saveMatlabFigs() throws MatlabInvocationException {
+        if (clusters.get(0).getData().get(0).getPoints().length <= 3) {
+            proxy.eval("saveas(clustering, '" + path + "/"
+                    + loadedDataset.getName()
+                    .substring(0, loadedDataset.getName().length() - 4)
+                    + "_Clustering', 'fig')");
+        }
+        proxy.eval("saveas(mapping, '" + path + "/"
+                + loadedDataset.getName()
+                .substring(0, loadedDataset.getName().length() - 4)
+                + "_Mapping', 'fig')");
+        proxy.eval("saveas(silhouette, '" + path + "/Silhouette', 'fig')");
+
+        File newDir = new File(path + "/Validation_Measures");
+        if (!newDir.exists()) {
+            newDir.mkdirs();
+        }
+
+        proxy.eval("saveas(pcce, '" + path + "Validation_Measures/PC_CE', 'fig')");
+        proxy.eval("saveas(scxb, '" + path + "Validation_Measures/SC_XB', 'fig')");
+        proxy.eval("saveas(dunnA, '" + path + "Validation_Measures/Dunn_AltDunn', 'fig')");
+    }
+
+    private void cleanUpFiles() {
+        String pName = path
+                + loadedDataset.getName()
+                .substring(0, loadedDataset.getName().length() - 4);
+
+        if (!drop) {
+            File valid1 = new File(path + "_Validity1.csv");
+            valid1.delete();
+        }
+
+        File valid2 = new File(pName + "_Validity2.csv");
+        valid2.renameTo(new File(path + "Validation_Mesures/"
+                + loadedDataset.getName()
+                .substring(0, loadedDataset.getName().length() - 4)
+                + "_Validity2.csv"));
+    }
+
+    private void saveCompleted() {
+        JOptionPane.showMessageDialog(this, "Save Completed!",
+                "Operation Complete", JOptionPane.INFORMATION_MESSAGE);
+    }
 }
